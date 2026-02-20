@@ -1,0 +1,3 @@
+logback:
+  elk:
+    destination: localhost:5000

@@ -1,0 +1,30 @@
+package pe.gob.hospitalcayetano.cocommon.servletloggin;
+
+import org.springframework.util.StreamUtils;
+
+import javax.servlet.ServletInputStream;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequestWrapper;
+import java.io.*;
+
+public class CacheBodyHttpServletRequest extends HttpServletRequestWrapper {
+
+    private final byte[] cacheBody;
+
+    public CacheBodyHttpServletRequest(HttpServletRequest request) throws IOException {
+        super(request);
+        InputStream requestInputStream = request.getInputStream();
+        this.cacheBody = StreamUtils.copyToByteArray(requestInputStream);
+    }
+
+    @Override
+    public ServletInputStream getInputStream() {
+        return new CacheBodyServletInputStream(this.cacheBody);
+    }
+
+    @Override
+    public BufferedReader getReader() {
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(this.cacheBody);
+        return new BufferedReader(new InputStreamReader(byteArrayInputStream));
+    }
+}

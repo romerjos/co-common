@@ -1,0 +1,78 @@
+# This workflow will build a package using Maven and then publish it to GitHub packages when a release is created
+# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
+
+name: Maven Package
+
+on:
+  push:
+    branches:
+      - develop
+      - release
+      - master
+      - hotfix/*
+  workflow_dispatch:
+
+jobs:
+  build_develop_release_hotfix:
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/hotfix/')
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configuración de JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Configuración de setting.xml
+        uses: whelk-io/maven-settings-xml-action@v22
+        with:
+          repositories: '[{ "id": "github", "url": "https://maven.pkg.github.com/InformaticaHNCH2/co-common" }]'
+          servers: '[{ "id": "github", "username": "${{secrets.NEXUS_GITHUB_USERNAME}}", "password": "${{secrets.NEXUS_GITHUB_PASSWORD}}" }]'
+
+      - name: Construcción y generación del .jar mediante Maven
+        run: |
+          mvn clean deploy
+
+  build_master:
+    if: github.ref == 'refs/heads/master'
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configuración de JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Configuración de setting.xml
+        uses: whelk-io/maven-settings-xml-action@v22
+        with:
+          repositories: '[{ "id": "github", "url": "https://maven.pkg.github.com/InformaticaHNCH2/co-common" }]'
+          servers: '[{ "id": "github", "username": "${{secrets.NEXUS_GITHUB_USERNAME}}", "password": "${{secrets.NEXUS_GITHUB_PASSWORD}}" }]'
+
+      - name: Creación de tag
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/${{vars.VERSION_PROD}}',
+              sha: context.sha
+            })
+
+      - name: Construcción y generación del .jar mediante Maven
+        run: |
+          sed -i s/DEV/PROD/g pom.xml
+          mvn clean deploy

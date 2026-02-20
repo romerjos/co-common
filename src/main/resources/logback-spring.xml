@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+    <springProperty name="elkDestination" source="logback.elk.destination" />
+    <springProperty name="msName" source="spring.application.name" />
+    <springProperty name="environment" source="spring.profiles.active" />
+
+    <!--<appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern> %d{dd-MM-yyyy HH:mm:ss.SSS} [%thread] %-5level %logger{36}.%M - %msg%n </pattern>
+        </encoder>
+    </appender>-->
+
+    <if condition='!"${environment}".equals("local")'>
+        <then>
+            <appender name="logstash" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+                <destination>${elkDestination}</destination>
+                <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                    <providers>
+                        <pattern>
+                            <pattern>
+                                { "time": "%date{HH:mm:ss.SSSSSS}" }
+                            </pattern>
+                        </pattern>
+                        <mdc />
+                        <pattern>
+                            <pattern>
+                                {
+                                "jti": "%X{jti}"
+                                }
+                            </pattern>
+                        </pattern>
+                        <context />
+                        <logLevel />
+                        <loggerName />
+                        <pattern>
+                            <pattern>
+                                {
+                                "app": "${msName}"
+                                }
+                            </pattern>
+                        </pattern>
+                        <threadName />
+                        <message />
+                        <logstashMarkers />
+                        <stackTrace />
+                    </providers>
+                </encoder>
+            </appender>
+        </then>
+    </if>
+
+    <root level="info">
+        <!--<appender-ref ref="stdout" />-->
+        <if condition='!"${environment}".equals("local")'>
+            <then>
+                <appender-ref ref="logstash" />
+            </then>
+        </if>
+    </root>
+
+    <!-- Silenciar advertencias de TLSv1 del driver de SQL Server -->
+    <logger name="com.microsoft.sqlserver.jdbc.internals.TDS.Channel" level="ERROR" additivity="false"/>
+</configuration>
