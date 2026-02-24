@@ -10,51 +10,45 @@ import pe.gob.hospitalcayetano.cocommon.model.ApiDataResponse403;
 import pe.gob.hospitalcayetano.cocommon.model.ApiResponse401;
 import pe.gob.hospitalcayetano.cocommon.model.ApiResponse403;
 
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 public final class ResponseUtil {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private ResponseUtil() {
     }
 
     public static <T> ResponseEntity<T> obtenerResultado(Object data, Class<T> classResponse) {
-        return new ResponseEntity<>(
-                obtenerContenido(data, classResponse),
-                HttpStatus.OK
-        );
+        return ResponseEntity.ok(obtenerContenido(data, classResponse));
     }
 
     public static <T> ResponseEntity<T> obtenerResultado(Class<T> classResponse) {
-        return new ResponseEntity<>(
-                obtenerContenido(classResponse),
-                HttpStatus.OK
-        );
+        return ResponseEntity.ok(obtenerContenido(classResponse));
     }
 
     @SneakyThrows
     private static <T> T obtenerContenido(Object data, Class<T> classResponse) {
         try {
-            T classDestinoNuevo = classResponse.newInstance();
+            T instance = classResponse.getDeclaredConstructor().newInstance();
 
-            Field fieldMetadata = classDestinoNuevo.getClass().getDeclaredField("metadata");
-            fieldMetadata.setAccessible(true);
-            fieldMetadata.set(classDestinoNuevo,
-                    obtenerMetadataExito(classDestinoNuevo.getClass().getDeclaredField("metadata").getType()));
+            Field metadataField = instance.getClass().getDeclaredField("metadata");
+            metadataField.setAccessible(true);
+            metadataField.set(instance,
+                    obtenerMetadataExito(metadataField.getType()));
 
-            Field fieldData = classDestinoNuevo.getClass().getDeclaredField("data");
-            fieldData.setAccessible(true);
-            fieldData.set(classDestinoNuevo, data);
+            Field dataField = instance.getClass().getDeclaredField("data");
+            dataField.setAccessible(true);
+            dataField.set(instance, data);
 
-            return classDestinoNuevo;
+            return instance;
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            log.error("Error creando contenido de respuesta", e);
             throw e;
         }
     }
@@ -62,86 +56,88 @@ public final class ResponseUtil {
     @SneakyThrows
     private static <T> T obtenerContenido(Class<T> classResponse) {
         try {
-            T classDestinoNuevo = classResponse.newInstance();
+            T instance = classResponse.getDeclaredConstructor().newInstance();
 
-            Field fieldMetadata = classDestinoNuevo.getClass().getDeclaredField("metadata");
-            fieldMetadata.setAccessible(true);
-            fieldMetadata.set(classDestinoNuevo,
-                    obtenerMetadataExito(classDestinoNuevo.getClass().getDeclaredField("metadata").getType()));
+            Field metadataField = instance.getClass().getDeclaredField("metadata");
+            metadataField.setAccessible(true);
+            metadataField.set(instance,
+                    obtenerMetadataExito(metadataField.getType()));
 
-            return classDestinoNuevo;
+            return instance;
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            log.error("Error creando contenido sin data", e);
             throw e;
         }
     }
 
     @SneakyThrows
-    private static <T> T obtenerMetadataExito(Class<T> classResponse) {
+    private static <T> T obtenerMetadataExito(Class<T> metadataClass) {
         try {
-            T classDestinoNuevo = classResponse.newInstance();
+            T metadata = metadataClass.getDeclaredConstructor().newInstance();
 
-            Field fieldStatus = classDestinoNuevo.getClass().getDeclaredField("status");
-            fieldStatus.setAccessible(true);
-            fieldStatus.set(classDestinoNuevo, HttpStatus.OK.value());
+            Field statusField = metadata.getClass().getDeclaredField("status");
+            statusField.setAccessible(true);
+            statusField.set(metadata, HttpStatus.OK.value());
 
-            Field fieldMessage = classDestinoNuevo.getClass().getDeclaredField("message");
-            fieldMessage.setAccessible(true);
-            fieldMessage.set(classDestinoNuevo, "El proceso fue exitoso.");
+            Field messageField = metadata.getClass().getDeclaredField("message");
+            messageField.setAccessible(true);
+            messageField.set(metadata, "El proceso fue exitoso.");
 
-            return classDestinoNuevo;
+            return metadata;
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            log.error("Error creando metadata de éxito", e);
             throw e;
         }
     }
 
     public static String procesarRespuestaNoAutorizado(HttpServletResponse response) throws IOException {
         log.error("Credenciales no autorizadas.");
-        ApiDataResponse401 apiDataResponse401 = new ApiDataResponse401();
-        apiDataResponse401.setStatus(HttpStatus.UNAUTHORIZED.value());
-        apiDataResponse401.setMessage("Acceso no autorizado.");
+
+        ApiDataResponse401 metadata = new ApiDataResponse401();
+        metadata.setStatus(HttpStatus.UNAUTHORIZED.value());
+        metadata.setMessage("Acceso no autorizado.");
 
         ApiResponse401 errorResponse = new ApiResponse401();
-        errorResponse.setMetadata(apiDataResponse401);
+        errorResponse.setMetadata(metadata);
 
-        String jsonString = new ObjectMapper().writeValueAsString(errorResponse);
+        String json = OBJECT_MAPPER.writeValueAsString(errorResponse);
 
         response.setContentType("application/json");
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        response.getWriter().write(jsonString);
+        response.getWriter().write(json);
 
-        return jsonString;
+        return json;
     }
 
     public static void procesarRespuestaProhibido(HttpServletResponse response) throws IOException {
         log.error("Acceso denegado al recurso solicitado.");
 
-        ApiDataResponse403 apiDataResponse403 = new ApiDataResponse403();
-        apiDataResponse403.setStatus(HttpStatus.FORBIDDEN.value());
-        apiDataResponse403.setMessage("No tiene permiso para acceder al recurso solicitado.");
+        ApiDataResponse403 metadata = new ApiDataResponse403();
+        metadata.setStatus(HttpStatus.FORBIDDEN.value());
+        metadata.setMessage("No tiene permiso para acceder al recurso solicitado.");
 
         ApiResponse403 errorResponse = new ApiResponse403();
-        errorResponse.setMetadata(apiDataResponse403);
+        errorResponse.setMetadata(metadata);
 
-        String jsonString = new ObjectMapper().writeValueAsString(errorResponse);
+        String json = OBJECT_MAPPER.writeValueAsString(errorResponse);
 
         response.setContentType("application/json");
         response.setStatus(HttpStatus.FORBIDDEN.value());
-        response.getWriter().write(jsonString);
-
+        response.getWriter().write(json);
     }
 
     public static String maskKey(String key) {
         if (key == null) return "null";
-        return key.length() > 4 ? key.substring(0, Math.min(10, key.length())) + "*******" : key;
+        return key.length() > 4
+                ? key.substring(0, Math.min(10, key.length())) + "*******"
+                : key;
     }
 
     public static List<String> maskAllowed(List<String> allowed) {
         if (allowed == null) return Collections.emptyList();
         return allowed.stream()
                 .map(ResponseUtil::maskKey)
-                .collect(Collectors.toList());
+                .toList(); // Java 21 más limpio
     }
 
     public static String smallUrl(String url) {
@@ -149,5 +145,4 @@ public final class ResponseUtil {
         int idx = url.indexOf('?');
         return idx > -1 ? url.substring(0, idx) : url;
     }
-
 }

@@ -1,238 +1,204 @@
 package pe.gob.hospitalcayetano.cocommon.util;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 import pe.gob.hospitalcayetano.cocommon.servletloggin.CacheBodyHttpServletRequest;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+import javax.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.nio.charset.Charset;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Component
-@Slf4j
 public class LoggerUtil {
 
-    private static List<String> listaDataSensible;
+    private static final Logger log = LoggerFactory.getLogger(LoggerUtil.class);
 
-    private static List<String> listaDataExtensa;
+    private static List<String> listaDataSensible = Collections.emptyList();
+    private static List<String> listaDataExtensa = Collections.emptyList();
 
-    private LoggerUtil() {}
+    @Value("${lista.data.sensible:}")
+    private List<String> listaDSConfig;
 
-    @Value("${lista.data.sensible:#{T(java.util.Collections).emptyList()}}")
-    public void setListaDataSensible(List<String> listaDS) {
-        listaDataSensible = listaDS;
+    @Value("${lista.data.extensa:}")
+    private List<String> listaDEConfig;
+
+    public static boolean isTieneValoresListaDataSensible() {
+        return false;
     }
 
-    @Value("${lista.data.extensa:#{T(java.util.Collections).emptyList()}}")
-    public void setListaDataExtensa(List<String> listaDE) {
-        listaDataExtensa = listaDE;
+    public static boolean isTieneValoresListaDataExtensa() {
+        return false;
     }
 
-    public static String limpiarEspciosBlancoYSantoLinea(String json) {
-        String jsonATratar = json.replaceAll("(\n|\r)", "");
+    @PostConstruct
+    public void init() {
+        if (listaDSConfig != null) {
+            listaDataSensible = listaDSConfig;
+        }
+        if (listaDEConfig != null) {
+            listaDataExtensa = listaDEConfig;
+        }
+    }
+
+    public static String limpiarEspaciosBlancoYSaltosLinea(String json) {
+        if (json == null) return "";
+
+        String jsonATratar = json.replaceAll("[\\n\\r]", "");
         boolean quoted = false;
-
         StringBuilder builder = new StringBuilder();
 
-        for (int i = 0; i < jsonATratar.length(); i++) {
-            char c = jsonATratar.charAt(i);
-
-            if (c == '\"') quoted = !quoted;
-
-            if (quoted || !Character.isWhitespace(c)) builder.append(c);
+        for (char c : jsonATratar.toCharArray()) {
+            if (c == '"') quoted = !quoted;
+            if (quoted || !Character.isWhitespace(c)) {
+                builder.append(c);
+            }
         }
 
         return builder.toString();
     }
 
     public static String ocultarDataSensibleQueryParam(String data) {
-        if (listaDataSensible == null || listaDataSensible.isEmpty()) return data;
+        if (data == null || listaDataSensible.isEmpty()) return data;
 
-        String dataSensibleRegex = listaDataSensible.stream()
+        String regex = listaDataSensible.stream()
                 .map(field -> "(?<=" + field + "=)([^&]*)")
-                .reduce((a, b) -> a + "|" + b)
-                .orElse("");
+                .collect(Collectors.joining("|"));
 
-        return data.replaceAll(dataSensibleRegex, "*****");
+        return data.replaceAll(regex, "*****");
     }
 
     public static String ocultarDataSensible(String data) {
-        String dataSensibleRegex = listaDataSensible.stream()
-                .map(field -> "(?<=\\\"" + field + "\\\":\\\")[^\"]+?(?=\\\")")
-                .reduce((a, b) -> a + "|" + b)
-                .orElse("");
+        if (data == null || listaDataSensible.isEmpty()) return data;
 
-        return data.replaceAll(dataSensibleRegex, "*****");
+        String regex = listaDataSensible.stream()
+                .map(field -> "(?<=\\\"" + field + "\\\":\\\")[^\"]+?(?=\\\")")
+                .collect(Collectors.joining("|"));
+
+        return data.replaceAll(regex, "*****");
     }
 
     public static String reducirDataExtensa(String data) {
-        String dataExtensaRegex = listaDataExtensa.stream()
-                .map(field -> "(?<=\\\"" + field + "\\\":\\\")[^\"]+?(?=\\\")")
-                .reduce((a, b) -> a + "|" + b)
-                .orElse("");
+        if (data == null || listaDataExtensa.isEmpty()) return data;
 
-        Pattern pattern = Pattern.compile(dataExtensaRegex);
+        String regex = listaDataExtensa.stream()
+                .map(field -> "(?<=\\\"" + field + "\\\":\\\")[^\"]+?(?=\\\")")
+                .collect(Collectors.joining("|"));
+
+        Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(data);
 
-        StringBuilder updatedRequestBody = new StringBuilder();
+        StringBuffer sb = new StringBuffer();
 
         while (matcher.find()) {
-            String sensitiveValue = matcher.group();
-            String truncatedValue = sensitiveValue.length() > 10
-                    ? sensitiveValue.substring(0, 10) + "..."
-                    : sensitiveValue;
-            matcher.appendReplacement(updatedRequestBody, truncatedValue);
+            String value = matcher.group();
+            String truncated = value.length() > 10
+                    ? value.substring(0, 10) + "..."
+                    : value;
+            matcher.appendReplacement(sb, truncated);
         }
 
-        matcher.appendTail(updatedRequestBody);
-
-        return updatedRequestBody.toString();
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 
     private static String obtenerDataString(byte[] buf, String charsetName) {
         if (buf == null || buf.length == 0) return null;
         try {
-            return new String(buf, charsetName);
+            Charset charset = charsetName != null
+                    ? Charset.forName(charsetName)
+                    : Charset.defaultCharset();
+            return new String(buf, charset);
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            log.error("Error convirtiendo respuesta a String", e);
             return null;
         }
     }
 
-    public static String imprimirRequestBody(CacheBodyHttpServletRequest wrappedRequest, HttpServletRequest request) throws IOException {
-        //String requestBodyString = obtenerDataString(wrappedRequest.getContentAsByteArray(), request.getCharacterEncoding());
-        String requestBodyString = wrappedRequest.getReader().lines().collect(Collectors.joining());
-        if (requestBodyString == null) return "";
+    public static String imprimirRequestBody(CacheBodyHttpServletRequest wrappedRequest,
+                                             HttpServletRequest request) throws Exception {
 
-        StringBuilder requestBody = new StringBuilder();
-        requestBody.append(LoggerUtil.limpiarEspciosBlancoYSantoLinea(requestBodyString));
+        String body = wrappedRequest.getReader()
+                .lines()
+                .collect(Collectors.joining());
 
-        if (listaDataSensible != null && !listaDataSensible.isEmpty()) {
-            String informacionOcultada = LoggerUtil.ocultarDataSensible(requestBody.toString());
+        if (body == null) return "";
 
-            requestBody.setLength(0);
-            requestBody.append(informacionOcultada);
-        }
+        body = limpiarEspaciosBlancoYSaltosLinea(body);
+        body = ocultarDataSensible(body);
+        body = reducirDataExtensa(body);
 
-        if (listaDataExtensa != null && !listaDataExtensa.isEmpty()) {
-            String informacionRecortada = LoggerUtil.reducirDataExtensa(requestBody.toString());
-
-            requestBody.setLength(0);
-            requestBody.append(informacionRecortada);
-        }
-
-        log.info("Request body:\n" + requestBody);
-        return requestBody.toString();
+        log.info("Request body: {}", body);
+        return body;
     }
 
-    public static String imprimirResponseBody(ContentCachingResponseWrapper wrappedResponse, HttpServletResponse response) {
-        String responseBodyString = obtenerDataString(wrappedResponse.getContentAsByteArray(), response.getCharacterEncoding());
-        if (responseBodyString == null) return "";
+    public static String imprimirResponseBody(ContentCachingResponseWrapper wrappedResponse,
+                                              HttpServletResponse response) {
 
-        boolean esPdf = responseBodyString.startsWith("%PDF");
-        boolean contieneBinario = esContenidoBinario(wrappedResponse);
+        String body = obtenerDataString(
+                wrappedResponse.getContentAsByteArray(),
+                response.getCharacterEncoding());
 
-        if (esPdf || contieneBinario) {
-            int maxLen = Math.min(20, responseBodyString.length());
-            String preview = responseBodyString.substring(0, maxLen).replaceAll("[\n\r]", "");
-            log.info("Response body:\n[binario detectado] {}...", preview);
-            return preview;
+        if (body == null) return "";
+
+        if (esContenidoBinario(wrappedResponse)) {
+            log.info("Response body: [binario detectado]");
+            return "[binario detectado]";
         }
 
-        StringBuilder responseBody = new StringBuilder();
-        responseBody.append(limpiarEspciosBlancoYSantoLinea(responseBodyString));
-        String informacionRecortada;
+        body = limpiarEspaciosBlancoYSaltosLinea(body);
+        body = ocultarDataSensible(body);
+        body = reducirDataExtensa(body);
 
-        if (listaDataSensible != null && !listaDataSensible.isEmpty()) {
-            informacionRecortada = ocultarDataSensible(responseBody.toString());
-            responseBody.setLength(0);
-            responseBody.append(informacionRecortada);
-        }
-
-        if (listaDataExtensa != null && !listaDataExtensa.isEmpty()) {
-            informacionRecortada = reducirDataExtensa(responseBody.toString());
-            responseBody.setLength(0);
-            responseBody.append(informacionRecortada);
-        }
-
-        log.info("Response body:\n" + responseBody);
-        return responseBody.toString();
+        log.info("Response body: {}", body);
+        return body;
     }
 
-    public static boolean isTieneValoresListaDataSensible() {
-        return listaDataSensible != null && !listaDataSensible.isEmpty();
-    }
+    public static boolean esContenidoBinario(ContentCachingResponseWrapper wrappedResponse) {
+        byte[] bytes = wrappedResponse.getContentAsByteArray();
+        if (bytes == null || bytes.length < 4) return false;
 
-    public static boolean isTieneValoresListaDataExtensa() {
-        return listaDataExtensa != null && !listaDataExtensa.isEmpty();
+        return (bytes[0] == 0x25 && bytes[1] == 0x50 &&
+                bytes[2] == 0x44 && bytes[3] == 0x46); // PDF
     }
 
     public static String imprimirInformacionEndpoint(HttpServletRequest request) {
-        String info = obtenerInformacionEndpoint(request).toString();
-        log.info("==> " + info);
-        return info;
-    }
 
-    public static String imprimirInformacionFin(HttpServletRequest request, HttpServletResponse response, long tiempoTranscurrido) {
-        StringBuilder infoEndpoint = obtenerInformacionEndpoint(request);
-        int status = response.getStatus();
-        double tiempoSegundos = (double) tiempoTranscurrido / 1000.0;
-
-        String mensaje = "<== " + infoEndpoint + " - response HTTP=" + status + " en " + tiempoSegundos + "s";
-        log.info(mensaje);
-        return mensaje;
-    }
-
-    public static StringBuilder obtenerInformacionEndpoint(HttpServletRequest request) {
-        StringBuilder informacionEndpoint = new StringBuilder()
+        StringBuilder sb = new StringBuilder()
                 .append(request.getMethod())
                 .append(" ")
                 .append(request.getRequestURL());
 
         if (request.getQueryString() != null) {
-            informacionEndpoint.append("?").append(ocultarDataSensibleQueryParam(request.getQueryString()));
+            sb.append("?")
+                    .append(ocultarDataSensibleQueryParam(request.getQueryString()));
         }
 
-        return informacionEndpoint;
+        String info = sb.toString();
+        log.info("==> {}", info);
+        return info;
     }
 
-    public static boolean esContenidoBinario(ContentCachingResponseWrapper wrappedResponse) {
-        byte[] responseBytes = wrappedResponse.getContentAsByteArray();
-        if (responseBytes == null || responseBytes.length < 4) {
-            return false;
-        }
+    public static String imprimirInformacionFin(HttpServletRequest request,
+                                                HttpServletResponse response,
+                                                long tiempoMs) {
 
-        boolean esPdf = responseBytes.length > 4 &&
-                responseBytes[0] == 0x25 && responseBytes[1] == 0x50 &&
-                responseBytes[2] == 0x44 && responseBytes[3] == 0x46;
+        double segundos = tiempoMs / 1000.0;
 
-        boolean esZip = responseBytes.length > 4 &&
-                responseBytes[0] == 0x50 && responseBytes[1] == 0x4B &&
-                (responseBytes[2] == 0x03 || responseBytes[2] == 0x05 || responseBytes[2] == 0x07) &&
-                (responseBytes[3] == 0x04 || responseBytes[3] == 0x06 || responseBytes[3] == 0x08);
+        String mensaje = "<== " + request.getMethod() +
+                " " + request.getRequestURI() +
+                " - HTTP=" + response.getStatus() +
+                " en " + segundos + "s";
 
-        boolean esJpeg = responseBytes.length > 3 &&
-                responseBytes[0] == (byte) 0xFF && responseBytes[1] == (byte) 0xD8 &&
-                responseBytes[2] == (byte) 0xFF;
-
-        boolean esExcelBin = responseBytes.length > 8 &&
-                responseBytes[0] == (byte) 0xD0 && responseBytes[1] == (byte) 0xCF &&
-                responseBytes[2] == (byte) 0x11 && responseBytes[3] == (byte) 0xE0;
-
-        boolean esPng = responseBytes.length > 8 &&
-                responseBytes[0] == (byte) 0x89 &&
-                responseBytes[1] == 0x50 &&
-                responseBytes[2] == 0x4E &&
-                responseBytes[3] == 0x47;
-
-        return (esPdf || esZip || esJpeg || esExcelBin || esPng);
+        log.info(mensaje);
+        return mensaje;
     }
-
-
 }

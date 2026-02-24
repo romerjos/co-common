@@ -1,5 +1,6 @@
 package pe.gob.hospitalcayetano.cocommon.interceptor;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,7 +12,6 @@ import pe.gob.hospitalcayetano.cocommon.util.ConstanteUtil;
 import pe.gob.hospitalcayetano.cocommon.util.ResponseUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 
 @Component
@@ -45,9 +45,11 @@ public class MsKeyValidationInterceptor implements HandlerInterceptor {
         String callerKey = request.getHeader(ConstanteUtil.CLAVE_KEY);
 
         if (!msConfig.getAllowed().contains(callerKey)) {
-            ResponseUtil.procesarRespuestaProhibido((javax.servlet.http.HttpServletResponse) response);
+
+            ResponseUtil.procesarRespuestaProhibido(response);
             return false;
         }
+
 
         return true;
     }

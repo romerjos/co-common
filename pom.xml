@@ -7,6 +7,7 @@
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.0.2</version>
 	</parent>
+
 	<groupId>pe.gob.hospitalcayetano</groupId>
 	<artifactId>co-common</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
@@ -30,6 +31,7 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
@@ -53,6 +55,7 @@
 			<artifactId>lombok</artifactId>
 			<scope>provided</scope>
 		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-openfeign</artifactId>
@@ -63,9 +66,8 @@
 			<!-- Spring Boot 4.0.x gestiona automáticamente la versión de Jakarta Servlet -->
 		</dependency>
 		<dependency>
-			<groupId>javax.servlet</groupId>
-			<artifactId>javax.servlet-api</artifactId>
-			<version>4.0.1</version> <!-- Compatible con javax -->
+			<groupId>jakarta.servlet</groupId>
+			<artifactId>jakarta.servlet-api</artifactId>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -78,7 +80,11 @@
 			<artifactId>javax.mail</artifactId>
 			<version>1.6.2</version> <!-- Versión más estable/final de javax.mail -->
 		</dependency>
-
+		<dependency>
+			<groupId>javax.annotation</groupId>
+			<artifactId>javax.annotation-api</artifactId>
+			<version>1.3.2</version>
+		</dependency>
 
 
 	</dependencies>
@@ -95,6 +101,13 @@
 		</dependencies>
 	</dependencyManagement>
 
+	<distributionManagement>
+		<repository>
+			<id>github</id>
+			<name>GitHub Packages</name>
+			<url>https://maven.pkg.github.com/Sebas1753/ms-common</url>
+		</repository>
+	</distributionManagement>
 
 	<build>
 		<plugins>
@@ -112,21 +125,6 @@
 							<artifactId>spring-boot-configuration-processor</artifactId>
 						</path>
 					</annotationProcessorPaths>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-				<version>4.0.2</version>
-				<configuration>
-					<mainClass>CoCommonApplication</mainClass>
-					<excludes>
-						<exclude>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-
-						</exclude>
-					</excludes>
 				</configuration>
 			</plugin>
 		</plugins>

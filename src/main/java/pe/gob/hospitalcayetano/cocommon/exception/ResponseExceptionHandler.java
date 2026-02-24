@@ -16,7 +16,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import pe.gob.hospitalcayetano.cocommon.model.*;
 import pe.gob.hospitalcayetano.cocommon.service.EmailService;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.List;
