@@ -1,6 +1,6 @@
 package pe.gob.hospitalcayetano.cocommon.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+//import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -11,6 +11,8 @@ import pe.gob.hospitalcayetano.cocommon.model.ApiResponse401;
 import pe.gob.hospitalcayetano.cocommon.model.ApiResponse403;
 
 import jakarta.servlet.http.HttpServletResponse;
+import tools.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Collections;

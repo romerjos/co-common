@@ -1,7 +1,5 @@
 package pe.gob.hospitalcayetano.cocommon.exception;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +15,9 @@ import pe.gob.hospitalcayetano.cocommon.model.*;
 import pe.gob.hospitalcayetano.cocommon.service.EmailService;
 
 import jakarta.servlet.http.HttpServletRequest;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.List;
@@ -83,7 +84,8 @@ public class ResponseExceptionHandler extends ResponseEntityExceptionHandler {
 
             return ResponseEntity
                     .status(e.status())
-                    .body(responseBody);
+                    //.body(responseBody);
+                    .body(null);
 
         } catch (Exception ex) {
             ApiDataResponseFeign metadata = new ApiDataResponseFeign();

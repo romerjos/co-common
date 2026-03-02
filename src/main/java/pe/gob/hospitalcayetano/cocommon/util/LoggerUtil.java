@@ -1,5 +1,8 @@
 package pe.gob.hospitalcayetano.cocommon.util;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,9 +10,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 import pe.gob.hospitalcayetano.cocommon.servletloggin.CacheBodyHttpServletRequest;
 
-import javax.annotation.PostConstruct;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.List;

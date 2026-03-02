@@ -11,54 +11,37 @@
         </encoder>
     </appender>-->
 
-    <if condition='!"${environment}".equals("local")'>
-        <then>
-            <appender name="logstash" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-                <destination>${elkDestination}</destination>
-                <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-                    <providers>
-                        <pattern>
-                            <pattern>
-                                { "time": "%date{HH:mm:ss.SSSSSS}" }
-                            </pattern>
-                        </pattern>
-                        <mdc />
-                        <pattern>
-                            <pattern>
-                                {
-                                "jti": "%X{jti}"
-                                }
-                            </pattern>
-                        </pattern>
-                        <context />
-                        <logLevel />
-                        <loggerName />
-                        <pattern>
-                            <pattern>
-                                {
-                                "app": "${msName}"
-                                }
-                            </pattern>
-                        </pattern>
-                        <threadName />
-                        <message />
-                        <logstashMarkers />
-                        <stackTrace />
-                    </providers>
-                </encoder>
-            </appender>
-        </then>
-    </if>
+    <springProfile name="!local">
 
-    <root level="info">
-        <!--<appender-ref ref="stdout" />-->
-        <if condition='!"${environment}".equals("local")'>
-            <then>
-                <appender-ref ref="logstash" />
-            </then>
-        </if>
-    </root>
+        <appender name="logstash"
+                  class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+            <destination>${elkDestination}</destination>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <mdc/>
+                    <logLevel/>
+                    <loggerName/>
+                    <threadName/>
+                    <message/>
+                    <stackTrace/>
+                </providers>
+            </encoder>
+        </appender>
+
+        <root level="info">
+            <appender-ref ref="logstash"/>
+        </root>
+
+    </springProfile>
+
+    <springProfile name="local">
+        <root level="info"/>
+    </springProfile>
 
     <!-- Silenciar advertencias de TLSv1 del driver de SQL Server -->
-    <logger name="com.microsoft.sqlserver.jdbc.internals.TDS.Channel" level="ERROR" additivity="false"/>
+    <logger name="com.microsoft.sqlserver.jdbc.internals.TDS.Channel"
+            level="ERROR"
+            additivity="false"/>
+
 </configuration>
